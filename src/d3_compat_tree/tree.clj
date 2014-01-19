@@ -1,6 +1,6 @@
 (ns d3-compat-tree.tree
   (:require [fast-zip.core :as fz]
-            [plumbing.core :refer [?> for-map]])
+            [plumbing.core :refer [for-map]])
   (:import [fast_zip.core ZipperLocation]))
 
 ;; # Genre tree creation
@@ -117,8 +117,8 @@
 (defn normalize-tree
   "Given a genre tree in-tree, returns normalized counts by genre, which are passed in as norm-tree.
   The type of normalized counts returned depend on in-tree, while norm-tree can use a number of counts: document, paragraph and sentence."
-  [norm-tree in-tree & {:keys [update-field boost-factor clean-up-fn]
-                        :or {update-field :count boost-factor 1000000}}]
+  [norm-tree in-tree & {:keys [update-field update-fn boost-factor clean-up-fn]
+                        :or {update-field :count boost-factor 1000000 update-fn /}}]
   (let [in-tree-zipper (tree-zipper in-tree)
         norm-tree-zipper (tree-zipper norm-tree)]
     (loop [loc in-tree-zipper]
@@ -126,5 +126,12 @@
         (fz/root loc)
         (recur
          (fz/next ; NOTE: get-count-in-tree should always return a positive number.
-          (fz/edit loc update-in [update-field] #(-> (/ % (get-count-in-tree update-field norm-tree-zipper (tree-path loc)) (/ 1 boost-factor))
-                                                     (?> clean-up-fn clean-up-fn)))))))))
+          (fz/edit loc
+                   update-in
+                   [update-field]
+                   (fn [in-tree-val]
+                     (let [norm-tree-val (get-count-in-tree update-field norm-tree-zipper (tree-path loc))
+                           new-val (update-fn in-tree-val norm-tree-val (/ 1 boost-factor))]
+                       (if clean-up-fn
+                         (clean-up-fn new-val)
+                         new-val))))))))))
