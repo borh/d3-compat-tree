@@ -112,7 +112,7 @@
         (if-let [found-loc (find-loc (first node-names) t-loc)]
           (recur (next node-names)
                  (fz/down found-loc)
-                 (-> found-loc fz/node field int)))))))
+                 (-> found-loc fz/node field)))))))
 
 (defn normalize-tree
   "Given a genre tree in-tree, returns normalized counts by genre, which are passed in as norm-tree.
