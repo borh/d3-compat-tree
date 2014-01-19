@@ -105,9 +105,9 @@
 (defn- get-count-in-tree [field loc ks]
   (loop [node-names ks
          t-loc loc
-         count 0]
+         count nil]
     (if-not node-names ; synthread?
-      count
+      (if count count 0)
       (if t-loc
         (if-let [found-loc (find-loc (first node-names) t-loc)]
           (recur (next node-names)
