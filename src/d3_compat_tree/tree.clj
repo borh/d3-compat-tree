@@ -57,11 +57,13 @@
         loc
         (recur (fz/right loc))))))
 
-(defn- update-keys [m1 m2 ks f]
-  (merge m1
-         (merge-with f
-                     (select-keys m1 ks)
-                     (select-keys m2 ks))))
+(defn- update-keys [m1 m2 key-fns]
+  (let [ks (set (keys key-fns))]
+    (merge m1
+           (for-map [k ks
+                     :let [v1 (k m1) v2 (k m2)]
+                     :when (or v1 v2)]
+               k ((k key-fns) v1 v2)))))
 
 (defn seq-to-tree
   "Transforms a vector of hierarchies (just another vector) into a tree data structure suitable for export to JavaScript.
@@ -69,9 +71,8 @@
   The underlying algorithm utilizes a custom tree zipper function.
   One downside to using zippers here is that searching for the child nodes is linear, but since the tree is heavily branched, this should not pose a problem even with considerable data.
   TODO: sentence-level features Q/A, conversational, etc?"
-  [hierarchies & {:keys [merge-keys merge-fn root-name root-values]
-                  :or {merge-keys [:count]
-                       merge-fn +
+  [hierarchies & {:keys [merge-fns root-name root-values]
+                  :or {merge-fns {:count +}
                        root-name "Genres"}}] ; -> [[:a :b :c :d] [:a :b :x :z] ... ]
   (fz/root ; Return final tree.
    (reduce ; Reduce over hierarchies.
@@ -80,17 +81,17 @@
            (reduce ; Reduce over fields in hierarchy (:a, :b, ...).
             (fn [loc field]
               (if-let [found-loc (if-let [child-loc (fz/down loc)] (find-loc field child-loc))]
-                (fz/edit found-loc update-keys m merge-keys merge-fn) ; Node already exists: update counts in node.
+                (fz/edit found-loc update-keys m merge-fns #_merge-keys #_merge-fn) ; Node already exists: update counts in node.
                 (-> loc ; Add new node and move loc to it (insert-child is a prepend op).
                     (fz/insert-child (merge {:name field}
-                                            (select-keys m merge-keys)))
+                                            (select-keys m (keys merge-fns))))
                     fz/down)))
             tree)
            root-loc-fz)) ; Move to root location.
     (tree-zipper (merge {:name root-name}
                         (or root-values
-                            (for-map [k merge-keys]
-                                k (reduce merge-fn (map k hierarchies)))))) ;; FIXME: seems this is overridden???
+                            (for-map [[k v] merge-fns]
+                                k (reduce v (map k hierarchies)))))) ;; FIXME: seems this is overridden???
     hierarchies)))
 
 (defn tree-path [tree-loc]
