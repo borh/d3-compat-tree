@@ -3,7 +3,7 @@
             [plumbing.core :refer [for-map]]
             [schema.core :as s])
   (:import [fast_zip.core ZipperLocation ZipperPath]
-           (clojure.lang IFn)))
+           [clojure.lang IFn]))
 
 ;; # Genre tree creation
 ;;
@@ -88,7 +88,7 @@
   "zips all the way up and returns the root node, reflecting any changes.
   Modified from fast-zip.core/root to return location over node."
   [loc :- ZipperLocation]
-  (if (identical? :end (.path loc)) ;; FIXME type hint .path
+  (if (identical? :end (.path loc))
     loc
     (let [p (fz/up loc)]
       (if p
