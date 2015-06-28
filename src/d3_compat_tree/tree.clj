@@ -40,7 +40,7 @@
 (s/defschema D3Tree
   (s/maybe
     {:name           s/Str
-     s/Keyword       s/Num
+     s/Keyword       (s/either s/Num s/Bool)
      (s/optional-key :children) [(s/recursive #'D3Tree)]}))
 
 (s/defn tree-zipper :- ZipperLocation
@@ -48,6 +48,21 @@
   (letfn [(make-node [node children]
             (with-meta (assoc node :children (vec children)) (meta node)))]
     (fz/zipper map? :children make-node root)))
+
+(s/defschema TreeNode
+  {s/Keyword (s/either s/Str s/Num s/Bool s/Keyword)
+   (s/optional-key :children) {(s/either s/Keyword s/Str) (s/recursive #'TreeNode)}})
+(s/defschema IndexedNode
+  {(s/either s/Keyword s/Str)
+   TreeNode})
+(s/defschema IndexedNodeSeq
+  [(s/one (s/either s/Keyword s/Str) "s")
+   TreeNode])
+(s/defschema IndexedTree
+  (s/either
+   TreeNode
+   IndexedNode
+   IndexedNodeSeq))
 
 ;; FIXME Workaround for vector usage where official fast-zip API expects an ISeq.
 (defn vector-down
@@ -81,7 +96,6 @@
          (if-let [u (fz/up p)]
            (or (fz/right u) (recur u))
            (ZipperLocation. (.-ops loc) (.-node p) :end)))))))
-
 ;; END FIXME
 
 (s/defn root-loc-fz :- ZipperLocation
@@ -146,6 +160,46 @@
                                   k (reduce v (map k hierarchies))))
                        :name root-name))
         hierarchies))))
+
+(s/defn seq-to-indexed-tree :- IndexedTree
+  "Transforms a vector of hierarchies (just another vector) into a tree data structure suitable for export to JavaScript.
+
+  The underlying algorithm utilizes a custom tree zipper function.
+  One downside to using zippers here is that searching for the child nodes is linear, but since the tree is heavily branched, this should not pose a problem even with considerable data.
+  TODO: sentence-level features Q/A, conversational, etc?"
+  [hierarchies :- [{:genre [s/Str] s/Keyword s/Any}]
+   & options :- [{(s/optional-key :merge-fns)   {s/Keyword IFn}
+                  (s/optional-key :root-name)   (s/either s/Str s/Keyword)
+                  (s/optional-key :root-values) {s/Keyword s/Any}}]]
+  (let [{:keys [merge-fns root-name root-values]
+         :or   {merge-fns {:count +}
+                root-name "Genres"}} (first options)] ; FIXME better destructuring.
+    (reduce
+     (s/fn [tree :- IndexedNode
+            m :- {:genre [s/Str] s/Keyword s/Any}]
+       (loop [t tree
+              current-path (into [root-name] (subvec (:genre m) 0 1))
+              next-path (subvec (:genre m) 1)]
+         (let [update-path (drop-last (interleave current-path (repeat :children)))
+               updated-tree (update-in t update-path
+                                       (s/fn :- TreeNode
+                                         [subtree :- (s/maybe (s/either IndexedNode TreeNode))]
+                                         (if subtree
+                                           (update-keys subtree m merge-fns)
+                                           (assoc (select-keys m (keys merge-fns))
+                                                  :name (last current-path)))))]
+           (if (seq next-path)
+             (recur updated-tree
+                    (into current-path (subvec next-path 0 1))
+                    (subvec next-path 1))
+             updated-tree))))
+
+     {root-name (assoc (or root-values
+                           (for-map [[k v] merge-fns]
+                               k (reduce v (map k hierarchies))))
+                       :name (name root-name))}
+
+     hierarchies)))
 
 (s/defn tree-path :- (s/either [s/Str] [s/Keyword])
   [tree-loc :- ZipperLocation]
