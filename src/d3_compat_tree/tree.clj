@@ -37,32 +37,27 @@
 ;; }
 ;; ```
 
+(def opt s/optional-key)
 (s/defschema D3Tree
   (s/maybe
     {:name           s/Str
      s/Keyword       (s/either s/Num s/Bool)
-     (s/optional-key :children) [(s/recursive #'D3Tree)]}))
+     (opt :children) [(s/recursive #'D3Tree)]}))
+
+(s/defschema TreeNode
+  {:name     (s/either s/Str s/Keyword)
+   s/Keyword (s/either s/Str s/Num s/Bool s/Keyword)
+   (opt :children) {(s/either s/Keyword s/Str) (s/recursive #'TreeNode)}})
+
+(s/defschema IndexedTreeNode
+  {(s/either s/Keyword s/Str)
+   TreeNode})
 
 (s/defn tree-zipper :- ZipperLocation
   [root :- {s/Keyword s/Any}]
   (letfn [(make-node [node children]
             (with-meta (assoc node :children (vec children)) (meta node)))]
     (fz/zipper map? :children make-node root)))
-
-(s/defschema TreeNode
-  {s/Keyword (s/either s/Str s/Num s/Bool s/Keyword)
-   (s/optional-key :children) {(s/either s/Keyword s/Str) (s/recursive #'TreeNode)}})
-(s/defschema IndexedNode
-  {(s/either s/Keyword s/Str)
-   TreeNode})
-(s/defschema IndexedNodeSeq
-  [(s/one (s/either s/Keyword s/Str) "s")
-   TreeNode])
-(s/defschema IndexedTree
-  (s/either
-   TreeNode
-   IndexedNode
-   IndexedNodeSeq))
 
 ;; FIXME Workaround for vector usage where official fast-zip API expects an ISeq.
 (defn vector-down
@@ -135,9 +130,9 @@
   One downside to using zippers here is that searching for the child nodes is linear, but since the tree is heavily branched, this should not pose a problem even with considerable data.
   TODO: sentence-level features Q/A, conversational, etc?"
   [hierarchies :- [{:genre [s/Str] s/Keyword s/Any}]
-   & options :- [{(s/optional-key :merge-fns)   {s/Keyword IFn}
-                  (s/optional-key :root-name)   s/Str
-                  (s/optional-key :root-values) {s/Keyword s/Any}}]]
+   & options :- [{(opt :merge-fns)   {s/Keyword IFn}
+                  (opt :root-name)   s/Str
+                  (opt :root-values) {s/Keyword s/Any}}]]
   (let [{:keys [merge-fns root-name root-values]
          :or   {merge-fns {:count +}
                 root-name "Genres"}} (first options)] ; FIXME better destructuring.
@@ -161,16 +156,16 @@
                        :name root-name))
         hierarchies))))
 
-(s/defn seq-to-indexed-tree :- IndexedTree
+(s/defn seq-to-indexed-tree :- IndexedTreeNode
   "Transforms a vector of hierarchies (just another vector) into a tree data structure suitable for export to JavaScript.
 
   The underlying algorithm utilizes a custom tree zipper function.
   One downside to using zippers here is that searching for the child nodes is linear, but since the tree is heavily branched, this should not pose a problem even with considerable data.
   TODO: sentence-level features Q/A, conversational, etc?"
   [hierarchies :- [{:genre [s/Str] s/Keyword s/Any}]
-   & options :- [{(s/optional-key :merge-fns)   {s/Keyword IFn}
-                  (s/optional-key :root-name)   (s/either s/Str s/Keyword)
-                  (s/optional-key :root-values) {s/Keyword s/Any}}]]
+   & options :- [{(opt :merge-fns)   {s/Keyword IFn}
+                  (opt :root-name)   (s/either s/Str s/Keyword)
+                  (opt :root-values) {s/Keyword s/Any}}]]
   (let [{:keys [merge-fns root-name root-values]
          :or   {merge-fns {:count +}
                 root-name "Genres"}} (first options)] ; FIXME better destructuring.
@@ -233,10 +228,10 @@
   The type of normalized counts returned depend on in-tree, while norm-tree can use a number of counts: document, paragraph and sentence."
   [norm-tree :- D3Tree
    in-tree   :- D3Tree
-   & options :- [{(s/optional-key :update-field) s/Keyword
-                  (s/optional-key :update-fn)    IFn
-                  (s/optional-key :boost-factor) s/Num
-                  (s/optional-key :clean-up-fn)  IFn}]]
+   & options :- [{(opt :update-field) s/Keyword
+                  (opt :update-fn)    IFn
+                  (opt :boost-factor) s/Num
+                  (opt :clean-up-fn)  IFn}]]
   (let [{:keys [update-field update-fn boost-factor clean-up-fn]
          :or {update-field :count boost-factor 1000000 update-fn /}} (first options) ; FIXME better destructuring.
         in-tree-zipper (tree-zipper in-tree)
