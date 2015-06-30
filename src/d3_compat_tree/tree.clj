@@ -170,7 +170,7 @@
          :or   {merge-fns {:count +}
                 root-name "Genres"}} (first options)] ; FIXME better destructuring.
     (reduce
-     (s/fn [tree :- IndexedNode
+     (s/fn [tree :- IndexedTreeNode
             m :- {:genre [s/Str] s/Keyword s/Any}]
        (loop [t tree
               current-path (into [root-name] (subvec (:genre m) 0 1))
@@ -178,7 +178,7 @@
          (let [update-path (drop-last (interleave current-path (repeat :children)))
                updated-tree (update-in t update-path
                                        (s/fn :- TreeNode
-                                         [subtree :- (s/maybe (s/either IndexedNode TreeNode))]
+                                         [subtree :- (s/maybe (s/either IndexedTreeNode TreeNode))]
                                          (if subtree
                                            (update-keys subtree m merge-fns)
                                            (assoc (select-keys m (keys merge-fns))
