@@ -1,4 +1,4 @@
-(defproject d3-compat-tree "0.0.5"
+(defproject d3-compat-tree "0.0.6"
   :description "A d3 tree layout compatible data structure for Clojure using zippers"
   :url "https://github.com/borh/d3-compat-tree.git"
   :license {:name "Eclipse Public License"
