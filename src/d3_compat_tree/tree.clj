@@ -38,20 +38,24 @@
 ;; ```
 
 (def opt s/optional-key)
+
 (s/defschema D3Tree
   (s/maybe
     {:name           s/Str
      s/Keyword       (s/either s/Num s/Bool)
      (opt :children) [(s/recursive #'D3Tree)]}))
 
-(s/defschema TreeNode
-  {:name     (s/either s/Str s/Keyword)
-   s/Keyword (s/either s/Str s/Num s/Bool s/Keyword)
-   (opt :children) {(s/either s/Keyword s/Str) (s/recursive #'TreeNode)}})
+(s/defschema Tree
+  {:name           s/Str
+   s/Keyword       (s/either s/Str s/Num s/Bool s/Keyword)
+   (opt :children) {(s/either s/Keyword s/Str s/Num)
+                    (s/recursive #'Tree)}})
 
-(s/defschema IndexedTreeNode
-  {(s/either s/Keyword s/Str)
-   TreeNode})
+(s/defschema IndexedTree
+  {(s/either s/Keyword s/Str s/Num)
+   {:name           s/Str
+    (opt :children) (s/recursive #'IndexedTree)
+    s/Keyword       (s/either s/Str s/Num s/Bool s/Keyword)}})
 
 (s/defn tree-zipper :- ZipperLocation
   [root :- {s/Keyword s/Any}]
@@ -156,7 +160,7 @@
                        :name root-name))
         hierarchies))))
 
-(s/defn seq-to-indexed-tree :- IndexedTreeNode
+(s/defn seq-to-indexed-tree :- IndexedTree
   "Transforms a vector of hierarchies (just another vector) into a tree data structure suitable for export to JavaScript.
 
   The underlying algorithm utilizes a custom tree zipper function.
@@ -170,15 +174,15 @@
          :or   {merge-fns {:count +}
                 root-name "Genres"}} (first options)] ; FIXME better destructuring.
     (reduce
-     (s/fn [tree :- IndexedTreeNode
-            m :- {:genre [s/Str] s/Keyword s/Any}]
-       (loop [t tree
+     (s/fn [tree :- IndexedTree
+            m    :- {:genre [s/Str] s/Keyword s/Any}]
+       (loop [t            tree
               current-path (into [root-name] (subvec (:genre m) 0 1))
-              next-path (subvec (:genre m) 1)]
-         (let [update-path (drop-last (interleave current-path (repeat :children)))
+              next-path    (subvec (:genre m) 1)]
+         (let [update-path  (drop-last (interleave current-path (repeat :children)))
                updated-tree (update-in t update-path
-                                       (s/fn :- TreeNode
-                                         [subtree :- (s/maybe (s/either IndexedTreeNode TreeNode))]
+                                       (s/fn :- Tree
+                                         [subtree :- (s/maybe (s/either IndexedTree Tree))]
                                          (if subtree
                                            (update-keys subtree m merge-fns)
                                            (assoc (select-keys m (keys merge-fns))
