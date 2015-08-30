@@ -1,4 +1,4 @@
-(defproject d3-compat-tree "0.0.7"
+(defproject d3-compat-tree "0.0.8"
   :description "A d3 tree layout compatible data structure for Clojure using zippers"
   :url "https://github.com/borh/d3-compat-tree.git"
   :license {:name "Eclipse Public License"
@@ -6,6 +6,6 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [prismatic/plumbing "0.4.4"]
-                 [prismatic/schema "0.4.3"]]
+                 [prismatic/schema "1.0.0-alpha1"]]
   :profiles {:dev {:dependencies [[org.clojure/test.check "0.8.0-alpha3"]]}}
   :min-lein-version "2.0.0")
