@@ -1,0 +1,9 @@
+{:deps    {fast-zip {:mvn/version "0.6.1" :exclusions [com.cemerick/austin]}
+           prismatic/schema {:mvn/version "1.1.12"}
+           prismatic/plumbing {:mvn/version "0.5.5"}}
+ :paths   ["src" "resources"]
+ :aliases {:test {:extra-paths ["test"]
+                  :extra-deps  {org.clojure/test.check {:mvn/version "1.0.0"}
+                                criterium              {:mvn/version "0.4.5"}
+                                expound                {:mvn/version "0.8.4"}
+                                orchestra              {:mvn/version "2019.02.17-20190218.053621-1"}}}}}
